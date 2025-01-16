@@ -1,37 +1,27 @@
-from flask import Flask, render_template, request
-from scipy.stats import poisson
+from flask import Flask, request, render_template # type: ignore
+import math
 
 app = Flask(__name__)
 
+def poisson_probability(lmbda, k):
+    return (lmbda**k * math.exp(-lmbda)) / math.factorial(k)
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    result = None
     if request.method == 'POST':
         try:
-            # Ambil input dari form
-            lambda_rate = float(request.form['lambda'])
+            lmbda = float(request.form['lambda'])
             max_k = int(request.form['max_k'])
+            probabilities = [
+                {'k': k, 'probability': poisson_probability(lmbda, k), 'percentage': poisson_probability(lmbda, k) * 100}
+                for k in range(max_k + 1)
+            ]
+            return render_template('index.html', lmbda=lmbda, max_k=max_k, probabilities=probabilities)
 
-            # Hitung probabilitas untuk setiap k dari 0 hingga max_k
-            probabilities = []
-            for k in range(max_k + 1):
-                prob = poisson.pmf(k, lambda_rate)
-                probabilities.append({
-                    'k': k,
-                    'prob': prob,
-                    'percentage': prob * 100
-                })
+        except (ValueError, KeyError):
+            return render_template('index.html', error="Input tidak valid. Masukkan nilai numerik.")
 
-            # Siapkan hasil untuk ditampilkan
-            result = {
-                'lambda_rate': lambda_rate,
-                'max_k': max_k,
-                'probabilities': probabilities
-            }
-        except Exception as e:
-            result = {'error': str(e)}
+    return render_template('index.html')
 
-    return render_template('index.html', result=result)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
